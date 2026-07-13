@@ -33,3 +33,8 @@ export const parseYouTubeVideoId = (input: string): string | null => {
 
   return null;
 };
+
+// The name a new game gets when the host doesn't bother typing one — which is most of the time.
+// en-CA gives YYYY-MM-DD, so it reads the same on every device regardless of locale.
+export const defaultBuzzedGameName = (now: Date): string =>
+  `Anime Quiz ${now.toLocaleDateString('en-CA')}`;

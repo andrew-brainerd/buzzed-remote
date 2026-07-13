@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseYouTubeVideoId } from '@/utils/youtube';
+import { defaultBuzzedGameName, parseYouTubeVideoId } from '@/utils/youtube';
 
 describe('parseYouTubeVideoId', () => {
   it.each([
@@ -26,5 +26,11 @@ describe('parseYouTubeVideoId', () => {
     ['just some words', 'not a link at all']
   ])('rejects %s (%s) rather than handing junk to the Roku', input => {
     expect(parseYouTubeVideoId(input)).toBeNull();
+  });
+});
+
+describe('defaultBuzzedGameName', () => {
+  it('stamps the date so back-to-back quiz nights are told apart', () => {
+    expect(defaultBuzzedGameName(new Date('2026-07-12T20:30:00Z'))).toBe('Anime Quiz 2026-07-12');
   });
 });
