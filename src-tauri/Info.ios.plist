@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Prompts for Local Network access so the app can reach the Roku over Wi-Fi (iOS 14+). -->
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Buzzed Remote finds and controls your Roku over your local Wi-Fi.</string>
+  <!-- Allows plain-HTTP requests to LAN addresses (the Roku ECP + a local dev API) without disabling ATS. -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsLocalNetworking</key>
+    <true/>
+  </dict>
+</dict>
+</plist>

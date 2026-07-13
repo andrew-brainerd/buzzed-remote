@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+
+/* Hide the scrollbar on horizontally-scrolling strips (e.g. the tab bar) while keeping scroll. */
+@utility no-scrollbar {
+  scrollbar-width: none; /* Firefox / standards */
+  &::-webkit-scrollbar {
+    display: none; /* WebKit (WKWebView) + Chromium (WebView2) */
+  }
+}
+
+@theme {
+  --color-canvas: #0a0a0b;
+  --color-panel: #17171a;
+  --color-panel-2: #1f1f24;
+  --color-line: #2c2c33;
+  --color-accent: #7c5cff;
+  --color-accent-hover: #6b4bf0;
+  --font-display: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100dvh;
+}
+
+html {
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  /* WKWebView ignores `overflow:hidden` on the body and still rubber-bands the whole page. Pinning
+     the body with position:fixed takes the document out of the scroll view entirely, so only the
+     inner content area (main) can scroll. */
+  position: fixed;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--color-canvas);
+  color: #ececf0;
+  font-family: var(--font-display);
+  -webkit-user-select: none;
+  user-select: none;
+}
