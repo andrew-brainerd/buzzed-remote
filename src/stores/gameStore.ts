@@ -3,7 +3,7 @@ import Pusher, { type Channel } from 'pusher-js';
 import { firebaseAuth } from '@/firebase';
 import * as api from '@/api/buzzedApi';
 import { useDeviceStore } from '@/stores/deviceStore';
-import { castVideo, setRokuPlaying } from '@/utils/rokuControl';
+import { castVideo, ensureRokuOn, setRokuPlaying } from '@/utils/rokuControl';
 import type { BuzzedGame, BuzzedGrade } from '@/types/buzzed';
 
 const CHANNEL = (gameId: string) => `buzzed-game-${gameId}`;
@@ -236,7 +236,14 @@ export const useGameStore = create<GameState>((set, get) => {
       }
 
       await run(async () => {
-        if (game.target === 'roku' && ip && game.videoId) await castVideo(ip, game.videoId);
+        if (game.target === 'roku' && ip && game.videoId) {
+          // A sleeping TV still answers ECP — it would accept the launch and play the intro to a black
+          // screen, with the buzzers already live. Wake it and wait for the panel before casting.
+          const awake = await ensureRokuOn(ip);
+          if (!awake) throw new Error('The TV didn’t wake up. Turn it on and try again.');
+
+          await castVideo(ip, game.videoId);
+        }
         return api.startGame(game.id);
       });
     },

@@ -3,14 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const rokuKeypress = vi.fn().mockResolvedValue(undefined);
 const rokuMediaPlayer = vi.fn();
 const rokuLaunch = vi.fn().mockResolvedValue(undefined);
+const rokuDeviceInfo = vi.fn();
 
 vi.mock('@/api/ipc', () => ({
   rokuKeypress: (...args: unknown[]) => rokuKeypress(...args),
   rokuMediaPlayer: (...args: unknown[]) => rokuMediaPlayer(...args),
-  rokuLaunch: (...args: unknown[]) => rokuLaunch(...args)
+  rokuLaunch: (...args: unknown[]) => rokuLaunch(...args),
+  rokuDeviceInfo: (...args: unknown[]) => rokuDeviceInfo(...args)
 }));
 
-const { castVideo, setRokuPlaying } = await import('@/utils/rokuControl');
+const { castVideo, ensureRokuOn, setRokuPlaying } = await import('@/utils/rokuControl');
+
+const device = (powerOn: boolean) => ({ name: 'Ernest', model: 'TV', is_tv: true, power_on: powerOn });
 
 const player = (state: string) => ({
   state,
@@ -90,5 +94,55 @@ describe('castVideo', () => {
     await castVideo('1.2.3.4', '7DZtULvbkHI');
 
     expect(rokuLaunch).toHaveBeenCalledWith('1.2.3.4', '837', '7DZtULvbkHI', 'video');
+  });
+});
+
+// A sleeping TV still answers ECP: it accepts the launch and plays the intro to a black screen while the
+// buzzers are already live. Every one of these guards a way that could happen for real.
+describe('ensureRokuOn', () => {
+  it('costs a single request when the TV is already on — no wake, no wait', async () => {
+    rokuDeviceInfo.mockResolvedValue(device(true));
+
+    expect(await ensureRokuOn('1.2.3.4')).toBe(true);
+    expect(rokuKeypress).not.toHaveBeenCalled();
+    expect(rokuDeviceInfo).toHaveBeenCalledTimes(1);
+  });
+
+  it('wakes a sleeping TV and waits for the panel to actually come up', async () => {
+    rokuDeviceInfo
+      .mockResolvedValueOnce(device(false))
+      .mockResolvedValueOnce(device(false))
+      .mockResolvedValue(device(true));
+
+    expect(await ensureRokuOn('1.2.3.4')).toBe(true);
+    expect(rokuKeypress).toHaveBeenCalledWith('1.2.3.4', 'PowerOn');
+    // It must not return on the keypress alone — that's the bug it exists to prevent.
+    expect(rokuDeviceInfo.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('rides out ECP requests dropped mid-boot rather than calling the wake a failure', async () => {
+    rokuDeviceInfo
+      .mockResolvedValueOnce(device(false))
+      .mockRejectedValueOnce(new Error('connection refused'))
+      .mockResolvedValue(device(true));
+
+    expect(await ensureRokuOn('1.2.3.4')).toBe(true);
+  });
+
+  it('gives up rather than hanging when the TV never comes up', async () => {
+    rokuDeviceInfo.mockResolvedValue(device(false));
+
+    // Short timeout so the test doesn't sit for the real 15s.
+    expect(await ensureRokuOn('1.2.3.4', 1_200)).toBe(false);
+    expect(rokuKeypress).toHaveBeenCalledWith('1.2.3.4', 'PowerOn');
+  });
+
+  it('sends PowerOn, never the Play toggle — Play would pause whatever is already up', async () => {
+    rokuDeviceInfo.mockResolvedValueOnce(device(false)).mockResolvedValue(device(true));
+
+    await ensureRokuOn('1.2.3.4');
+
+    expect(rokuKeypress).toHaveBeenCalledTimes(1);
+    expect(rokuKeypress).not.toHaveBeenCalledWith('1.2.3.4', 'Play');
   });
 });
