@@ -104,7 +104,7 @@ export const Buzzer = () => {
       </button>
 
       <p className="h-5 text-sm text-neutral-400">
-        {live ? 'Ring in!' : myPosition > 0 ? 'You’re in the queue' : 'Waiting…'}
+        {live ? '' : myPosition > 0 ? 'You’re in the queue' : 'Waiting…'}
       </p>
 
       {toGrade.map(pendingQuestion => (
