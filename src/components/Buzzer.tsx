@@ -23,10 +23,14 @@ const canBuzz = (game: BuzzedGame, userId: string, now: number) => {
   return true;
 };
 
-// Archived questions you rang in on but haven't graded. These sit alongside a live buzzer — the next
-// question is already armed while you're still marking the last one.
-const pendingGrades = (game: BuzzedGame, userId: string) =>
-  game.history.filter(q => q.ringIns.some(r => r.userId === userId && !r.grade));
+// The ONE archived question you still owe a thumb on — never a stack of them. It sits alongside a live
+// buzzer, since the next question is already armed while you're marking the last one.
+//
+// The SERVER guarantees there's at most one: archiving a question auto-marks any older ungraded ring-in as
+// `missed`. Mapping over every ungraded question here is what put TWO identical "Did you get it right?"
+// cards on screen with no way to tell them apart.
+const pendingGrade = (game: BuzzedGame, userId: string) =>
+  game.history.filter(q => q.ringIns.some(r => r.userId === userId && !r.grade)).at(-1);
 
 export const Buzzer = () => {
   const { game, busy, buzz, grade } = useGameStore();
@@ -51,7 +55,7 @@ export const Buzzer = () => {
       : 0;
 
   const myPosition = question ? question.ringIns.findIndex(r => r.userId === userId) + 1 : 0;
-  const toGrade = pendingGrades(game, userId);
+  const toGrade = pendingGrade(game, userId);
   const color = me?.color ?? DEFAULT_COLOR;
 
   return (
@@ -107,11 +111,8 @@ export const Buzzer = () => {
         {live ? '' : myPosition > 0 ? 'You’re in the queue' : 'Waiting…'}
       </p>
 
-      {toGrade.map(pendingQuestion => (
-        <div
-          key={pendingQuestion.index}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 p-4 text-center"
-        >
+      {toGrade && (
+        <div className="w-full rounded-lg border border-neutral-700 bg-neutral-900 p-4 text-center">
           <p className="font-semibold text-white">Did you get it right?</p>
           <p className="mb-3 text-xs text-neutral-500">The answer is on screen now</p>
 
@@ -119,7 +120,7 @@ export const Buzzer = () => {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void grade(pendingQuestion.index, 'correct')}
+              onClick={() => void grade(toGrade.index, 'correct')}
               className="flex-1 rounded-lg bg-emerald-600 py-3 font-semibold text-white disabled:opacity-50"
             >
               👍 Got it
@@ -127,14 +128,14 @@ export const Buzzer = () => {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void grade(pendingQuestion.index, 'missed')}
+              onClick={() => void grade(toGrade.index, 'missed')}
               className="flex-1 rounded-lg border border-red-600 py-3 font-semibold text-red-400 disabled:opacity-50"
             >
               👎 Missed
             </button>
           </div>
         </div>
-      ))}
+      )}
     </div>
   );
 };
