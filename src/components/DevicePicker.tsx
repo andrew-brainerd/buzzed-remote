@@ -3,10 +3,17 @@ import { rokuDeviceInfo } from '@/api/ipc';
 import { useDeviceStore } from '@/stores/deviceStore';
 
 export const DevicePicker = () => {
-  const { devices, activeId, addDevice, removeDevice, setActive } = useDeviceStore();
+  const { devices, activeId, addDevice, removeDevice, setActive, syncFromBackend } = useDeviceStore();
   const [ip, setIp] = useState('');
   const [checking, setChecking] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await syncFromBackend();
+    setRefreshing(false);
+  };
 
   // Confirm the IP is actually a Roku before saving it, so a typo fails here rather than silently
   // during a game when the pause doesn't fire.
@@ -26,7 +33,23 @@ export const DevicePicker = () => {
 
   return (
     <div className="space-y-3 rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
-      <h2 className="text-sm font-medium text-neutral-300">Roku</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium text-neutral-300">Roku</h2>
+        <button
+          type="button"
+          onClick={() => void onRefresh()}
+          disabled={refreshing}
+          className="text-xs text-neutral-500 hover:text-white disabled:opacity-40"
+        >
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </button>
+      </div>
+
+      {devices.length === 0 && (
+        <p className="text-xs text-neutral-500">
+          No saved TVs yet. Any Roku you’ve saved in Watch Remote shows up here.
+        </p>
+      )}
 
       {devices.length > 0 && (
         <ul className="space-y-1">

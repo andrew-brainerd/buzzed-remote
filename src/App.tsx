@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { useDeviceStore } from '@/stores/deviceStore';
 import { useGameStore } from '@/stores/gameStore';
 import { Login } from '@/components/Login';
 import { JoinGame } from '@/components/JoinGame';
@@ -7,6 +9,13 @@ import { GameView } from '@/components/GameView';
 export const App = () => {
   const { user, ready, signOut } = useAuthStore();
   const game = useGameStore(s => s.game);
+  const syncFromBackend = useDeviceStore(s => s.syncFromBackend);
+
+  // Pull the account's saved Rokos once we have a token to call with. The local cache renders first, so
+  // this only ever fills in TVs added on another client.
+  useEffect(() => {
+    if (user) void syncFromBackend();
+  }, [user, syncFromBackend]);
 
   if (!ready) {
     return (
