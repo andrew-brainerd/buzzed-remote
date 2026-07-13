@@ -24,6 +24,17 @@ body,
   height: 100dvh;
 }
 
+/* `viewport-fit=cover` (index.html) lets the webview paint edge to edge, which on a notched phone means
+   straight under the Dynamic Island — the header was being clipped by it. Nothing put the insets back, so
+   the app shell does. border-box keeps the padding inside the 100dvh instead of overflowing it. */
+#root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
 html {
   overscroll-behavior: none;
 }

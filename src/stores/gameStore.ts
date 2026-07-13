@@ -23,13 +23,22 @@ interface GameState {
   busy: boolean;
   join: (code: string) => Promise<void>;
   open: (gameId: string) => Promise<void>;
+  host: (input: HostGameInput) => Promise<void>;
   leave: () => void;
   refetch: () => Promise<void>;
   buzz: () => Promise<void>;
   grade: (questionIndex: number, grade: BuzzedGrade) => Promise<void>;
   advance: () => Promise<void>;
-  cast: () => Promise<void>;
   start: () => Promise<void>;
+  pause: () => Promise<void>;
+  resume: () => Promise<void>;
+}
+
+export interface HostGameInput {
+  name: string;
+  videoId: string;
+  answerWindowMs: number;
+  hostPlaying: boolean;
 }
 
 let pusher: Pusher | null = null;
@@ -164,6 +173,27 @@ export const useGameStore = create<GameState>((set, get) => {
         return game;
       }),
 
+    // Hosting from the app always targets the TV — that's the whole reason this app exists. The active
+    // Roku is baked into the game at creation, so every client knows which TV it's on.
+    host: async input =>
+      run(async () => {
+        const ip = rokuIp(null);
+        if (!ip) throw new Error('Pick a Roku first');
+
+        const game = await api.createGame({
+          name: input.name,
+          target: 'roku',
+          rokuDeviceIp: ip,
+          videoId: input.videoId,
+          settings: { answerWindowMs: input.answerWindowMs },
+          hostPlaying: input.hostPlaying
+        });
+
+        unsubscribe();
+        subscribe(game.id);
+        return game;
+      }),
+
     leave: () => {
       unsubscribe();
       set({ game: null, error: null });
@@ -192,22 +222,35 @@ export const useGameStore = create<GameState>((set, get) => {
       await run(() => api.advance(game.id));
     },
 
-    cast: async () => {
-      const game = get().game;
-      const ip = rokuIp(game);
-      if (!game?.videoId || !ip) {
-        set({ error: 'Set a video and a Roku first' });
-        return;
-      }
-      await run(async () => {
-        await castVideo(ip, game.videoId!);
-      });
-    },
-
+    // Starting IS the cast. A separate "cast to TV" button was a way to get the two out of step — you
+    // could start a game with nothing on the screen, or cast without starting. The TV is thrown up first,
+    // so by the time the buzzers go live the intro is already playing.
     start: async () => {
       const game = get().game;
       if (!game) return;
-      await run(() => api.startGame(game.id));
+
+      const ip = rokuIp(game);
+      if (game.target === 'roku' && (!game.videoId || !ip)) {
+        set({ error: 'Set a video and a Roku first' });
+        return;
+      }
+
+      await run(async () => {
+        if (game.target === 'roku' && ip && game.videoId) await castVideo(ip, game.videoId);
+        return api.startGame(game.id);
+      });
+    },
+
+    pause: async () => {
+      const game = get().game;
+      if (!game) return;
+      await run(() => api.pauseGame(game.id));
+    },
+
+    resume: async () => {
+      const game = get().game;
+      if (!game) return;
+      await run(() => api.resumeGame(game.id));
     }
   };
 });

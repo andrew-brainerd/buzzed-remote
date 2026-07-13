@@ -1,5 +1,5 @@
 import { call } from '@/api/client';
-import type { BuzzResponse, BuzzedGame, BuzzedGrade } from '@/types/buzzed';
+import type { BuzzResponse, BuzzedGame, BuzzedGrade, CreateBuzzedGameInput } from '@/types/buzzed';
 
 export const getGame = (gameId: string) => call<BuzzedGame>('GET', `/buzzed/games/${gameId}`);
 
@@ -26,7 +26,16 @@ export const setPlayback = (gameId: string, playing: boolean, positionSec: numbe
 export const setVideo = (gameId: string, videoId: string) =>
   call<BuzzedGame>('PUT', `/buzzed/games/${gameId}/video`, { videoId });
 
+export const createGame = (input: CreateBuzzedGameInput) =>
+  call<BuzzedGame>('POST', '/buzzed/games', input);
+
 export const startGame = (gameId: string) =>
   call<BuzzedGame>('POST', `/buzzed/games/${gameId}/start`, {});
+
+export const pauseGame = (gameId: string) =>
+  call<BuzzedGame>('POST', `/buzzed/games/${gameId}/pause`, {});
+
+export const resumeGame = (gameId: string) =>
+  call<BuzzedGame>('POST', `/buzzed/games/${gameId}/resume`, {});
 
 export const serverNow = () => call<{ now: number }>('GET', '/buzzed/time').then(r => r.now);

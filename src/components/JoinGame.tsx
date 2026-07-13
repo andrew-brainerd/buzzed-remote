@@ -6,7 +6,11 @@ import type { BuzzedGame } from '@/types/buzzed';
 
 const JOIN_CODE_LENGTH = 5;
 
-export const JoinGame = () => {
+interface JoinGameProps {
+  onHost: () => void;
+}
+
+export const JoinGame = ({ onHost }: JoinGameProps) => {
   const { join, open, busy, error } = useGameStore();
   const [code, setCode] = useState('');
   const [games, setGames] = useState<BuzzedGame[]>([]);
@@ -42,6 +46,14 @@ export const JoinGame = () => {
           </button>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={onHost}
+        className="w-full rounded-lg border border-neutral-700 py-3 text-sm font-semibold text-neutral-200 hover:bg-neutral-800"
+      >
+        Host a game
+      </button>
 
       {games.length > 0 && (
         <div className="rounded-lg border border-neutral-800 bg-neutral-900/60">

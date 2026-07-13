@@ -5,7 +5,7 @@ import { Buzzer } from '@/components/Buzzer';
 import { Scoreboard } from '@/components/Scoreboard';
 
 export const GameView = () => {
-  const { game, busy, error, cast, start, advance, leave } = useGameStore();
+  const { game, busy, error, start, advance, pause, resume, leave } = useGameStore();
   const activeDevice = useDeviceStore(s => s.activeDevice());
 
   if (!game) return null;
@@ -14,48 +14,42 @@ export const GameView = () => {
   const onRoster = game.players.some(p => p.userId === firebaseAuth.currentUser?.uid);
   const isRokuGame = game.target === 'roku';
   const answering = game.currentQuestion?.state === 'answering';
+  const paused = game.pausedAt !== undefined;
+  const active = game.status === 'active';
 
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-white">{game.name}</h1>
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-semibold text-white">{game.name}</h1>
           <p className="text-xs text-neutral-500">
-            {game.status} · {game.players.length} playing
+            {paused ? 'paused' : game.status} · {game.players.length} playing
             {isRokuGame && activeDevice ? ` · ${activeDevice.name}` : ''}
           </p>
         </div>
-        <button type="button" onClick={leave} className="text-xs text-neutral-400 hover:text-white">
+        <button
+          type="button"
+          onClick={leave}
+          className="shrink-0 text-xs text-neutral-400 hover:text-white"
+        >
           Leave
         </button>
       </div>
 
-      {/* Only the host's app drives the TV, so only the host gets these. */}
-      {isHost && isRokuGame && (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => void cast()}
-            disabled={busy || !game.videoId || !activeDevice}
-            className="flex-1 rounded-lg border border-neutral-700 py-2 text-sm text-neutral-200 disabled:opacity-40"
-          >
-            Cast to TV
-          </button>
-          {game.status === 'lobby' && (
-            <button
-              type="button"
-              onClick={() => void start()}
-              disabled={busy || game.players.length < 2}
-              className="flex-1 rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white disabled:opacity-40"
-            >
-              Start game
-            </button>
-          )}
-        </div>
+      {/* Starting IS the cast — there's no separate "cast to TV" button to get out of step with it. */}
+      {isHost && game.status === 'lobby' && (
+        <button
+          type="button"
+          onClick={() => void start()}
+          disabled={busy || game.players.length < 2}
+          className="rounded-lg bg-brand-600 py-3 text-sm font-semibold text-white disabled:opacity-40"
+        >
+          Start game &amp; cast
+        </button>
       )}
 
       {/* The window closes on its own; this just cuts it short once everyone has answered. */}
-      {isHost && answering && (
+      {isHost && active && !paused && answering && (
         <button
           type="button"
           onClick={() => void advance()}
@@ -68,9 +62,32 @@ export const GameView = () => {
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 
-      {game.status === 'active' && onRoster && <Buzzer />}
+      {active && paused && (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-10 text-center">
+          <p className="text-4xl" aria-hidden>
+            ⏸
+          </p>
+          <p className="text-2xl font-bold text-white">Paused</p>
+          <p className="text-sm text-neutral-400">
+            {isHost ? 'Buzzers are off until you resume.' : 'The host paused the game.'}
+          </p>
 
-      {game.status === 'active' && !onRoster && (
+          {isHost && (
+            <button
+              type="button"
+              onClick={() => void resume()}
+              disabled={busy}
+              className="mt-2 rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Resume game
+            </button>
+          )}
+        </div>
+      )}
+
+      {active && !paused && onRoster && <Buzzer />}
+
+      {active && !paused && !onRoster && (
         <p className="py-8 text-center text-sm text-neutral-500">
           {isHost ? 'You’re running the game' : 'You’re sitting out'}
         </p>
@@ -80,6 +97,17 @@ export const GameView = () => {
         <p className="py-8 text-center text-sm text-neutral-500">
           Waiting to start · code <span className="font-mono text-white">{game.joinCode}</span>
         </p>
+      )}
+
+      {isHost && active && !paused && (
+        <button
+          type="button"
+          onClick={() => void pause()}
+          disabled={busy}
+          className="rounded-lg border border-neutral-700 py-2 text-sm text-neutral-200 disabled:opacity-40"
+        >
+          Pause game
+        </button>
       )}
 
       <Scoreboard game={game} />
