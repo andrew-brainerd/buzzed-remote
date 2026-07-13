@@ -15,10 +15,12 @@ IPA=$(ls -t "${BUILD_DIR}"/*.ipa 2>/dev/null | head -1 || true)
 [ -n "${IPA}" ] || { echo "✖ No .ipa found in ${BUILD_DIR}"; exit 1; }
 echo "▶ Built ${IPA}"
 
+# A phone paired over the network reports "available (paired)", not "connected" — and installs to it work
+# perfectly well. Matching only "connected" meant every wireless build died here with the .ipa already built.
 DEVICE_ID=$(xcrun devicectl list devices 2>/dev/null \
-  | grep -i connected | grep -iv unavailable \
+  | grep -iE 'connected|available' | grep -iv unavailable \
   | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}' | head -1 || true)
-[ -n "${DEVICE_ID}" ] || { echo "✖ No connected iPhone (unlock it, enable Developer Mode, Trust the Mac)."; exit 1; }
+[ -n "${DEVICE_ID}" ] || { echo "✖ No iPhone reachable (unlock it, enable Developer Mode, Trust the Mac)."; exit 1; }
 
 echo "▶ Installing to device ${DEVICE_ID}…"
 xcrun devicectl device install app --device "${DEVICE_ID}" "${IPA}"
