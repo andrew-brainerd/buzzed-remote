@@ -1,13 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as watch from '@/api/watchApi';
 import { useDeviceStore } from '@/stores/deviceStore';
 import { useGameStore } from '@/stores/gameStore';
 import { defaultBuzzedGameName, parseYouTubeVideoId } from '@/utils/youtube';
+import { VideoResultList } from '@/components/VideoResultList';
 import type { YoutubePlaylist, YoutubePlaylistItem } from '@/types/youtube';
 
 const ANSWER_WINDOW_CHOICES = [5_000, 10_000, 15_000, 20_000];
 
-type Source = 'playlist' | 'link';
+type Source = 'playlist' | 'search' | 'link';
+
+const SOURCE_LABELS: Record<Source, string> = {
+  playlist: 'Playlist',
+  search: 'Search',
+  link: 'Link'
+};
 
 export const HostGame = () => {
   const { host, busy, error } = useGameStore();
@@ -25,6 +32,16 @@ export const HostGame = () => {
   const [items, setItems] = useState<YoutubePlaylistItem[]>([]);
   const [pickedVideoId, setPickedVideoId] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<YoutubePlaylistItem[]>([]);
+  const [nextPageToken, setNextPageToken] = useState<string | undefined>();
+  const [searched, setSearched] = useState(false);
+  const [searching, setSearching] = useState(false);
+
+  // A ref, not the `searching` state: the observer can fire again before a state update has rendered,
+  // which would fetch the same page twice.
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
     void watch
@@ -57,7 +74,45 @@ export const HostGame = () => {
       .finally(() => setLoading(false));
   };
 
-  const videoId = source === 'playlist' ? pickedVideoId : (parseYouTubeVideoId(videoUrl) ?? '');
+  // search.list costs 100 quota units a call against a 10k/day pool, so this only ever fires on submit.
+  const onSearch = async () => {
+    const trimmed = query.trim();
+    if (!trimmed || fetchingRef.current) return;
+
+    fetchingRef.current = true;
+    setSearching(true);
+    setSearched(true);
+    try {
+      const page = await watch.searchYoutubeVideos(trimmed);
+      setResults(page.items);
+      setNextPageToken(page.nextPageToken);
+    } catch {
+      setResults([]);
+      setNextPageToken(undefined);
+    } finally {
+      fetchingRef.current = false;
+      setSearching(false);
+    }
+  };
+
+  const loadMore = useCallback(async () => {
+    if (!nextPageToken || fetchingRef.current) return;
+
+    fetchingRef.current = true;
+    setSearching(true);
+    try {
+      const page = await watch.searchYoutubeVideos(query.trim(), nextPageToken);
+      setResults(current => [...current, ...page.items]);
+      setNextPageToken(page.nextPageToken);
+    } catch {
+      setNextPageToken(undefined);
+    } finally {
+      fetchingRef.current = false;
+      setSearching(false);
+    }
+  }, [nextPageToken, query]);
+
+  const videoId = source === 'link' ? (parseYouTubeVideoId(videoUrl) ?? '') : pickedVideoId;
   const ready = !!videoId && !!activeDevice && !busy;
 
   const onCreate = () => {
@@ -86,7 +141,7 @@ export const HostGame = () => {
         </label>
 
         <div className="flex gap-2">
-          {(['playlist', 'link'] as Source[]).map(option => (
+          {(Object.keys(SOURCE_LABELS) as Source[]).map(option => (
             <button
               key={option}
               type="button"
@@ -97,7 +152,7 @@ export const HostGame = () => {
                   : 'border-neutral-700 text-neutral-400'
               }`}
             >
-              {option === 'playlist' ? 'From a playlist' : 'Paste a link'}
+              {SOURCE_LABELS[option]}
             </button>
           ))}
         </div>
@@ -122,10 +177,48 @@ export const HostGame = () => {
 
         {/* Connecting has to happen on the web: the OAuth callback identifies you by the brainerd session
             cookie, which this webview doesn't carry. Once connected there, the app just reads it. */}
-        {source === 'playlist' && connected === false && (
+        {(source === 'playlist' || source === 'search') && connected === false && (
           <p className="rounded-md border border-neutral-700 bg-neutral-900 p-3 text-center text-sm text-neutral-400">
-            Connect YouTube on brainerd.dev/buzzed first — then your playlists show up here.
+            Connect YouTube on brainerd.dev/buzzed first — then you can browse and search here.
           </p>
+        )}
+
+        {source === 'search' && connected && (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && void onSearch()}
+                placeholder="anime opening quiz"
+                autoCapitalize="none"
+                autoCorrect="off"
+                className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-base text-white placeholder:text-neutral-600 focus:border-brand-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => void onSearch()}
+                disabled={!query.trim() || searching}
+                className="shrink-0 rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+              >
+                Search
+              </button>
+            </div>
+
+            {searched && !searching && results.length === 0 && (
+              <p className="text-sm text-neutral-500">Nothing found.</p>
+            )}
+
+            {results.length > 0 && (
+              <VideoResultList
+                items={results}
+                selectedVideoId={pickedVideoId}
+                onPick={setPickedVideoId}
+                onEndReached={nextPageToken ? loadMore : undefined}
+                loading={searching}
+              />
+            )}
+          </div>
         )}
 
         {source === 'playlist' && connected && (
@@ -146,28 +239,11 @@ export const HostGame = () => {
             {loading && <p className="text-sm text-neutral-500">Loading…</p>}
 
             {items.length > 0 && (
-              <ul className="max-h-64 space-y-1 overflow-y-auto">
-                {items.map(item => (
-                  <li key={item.videoId}>
-                    <button
-                      type="button"
-                      onClick={() => setPickedVideoId(item.videoId)}
-                      className={`flex w-full items-center gap-2 rounded-md border p-2 text-left ${
-                        item.videoId === pickedVideoId
-                          ? 'border-brand-500 bg-brand-600/15'
-                          : 'border-transparent hover:bg-neutral-800/60'
-                      }`}
-                    >
-                      <img
-                        src={item.thumbnail}
-                        alt=""
-                        className="h-10 w-16 shrink-0 rounded object-cover"
-                      />
-                      <span className="min-w-0 flex-1 truncate text-sm text-white">{item.title}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <VideoResultList
+                items={items}
+                selectedVideoId={pickedVideoId}
+                onPick={setPickedVideoId}
+              />
             )}
           </div>
         )}

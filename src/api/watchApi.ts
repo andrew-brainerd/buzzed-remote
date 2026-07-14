@@ -1,6 +1,6 @@
 import { call } from '@/api/client';
 import type { SavedDevice } from '@/types/device';
-import type { YoutubePlaylist, YoutubePlaylistItem } from '@/types/youtube';
+import type { YoutubePlaylist, YoutubePlaylistItem, YoutubeSearchPage } from '@/types/youtube';
 
 // The same account-level list watch-remote writes — there is no separate buzzed device list.
 export const getDevices = () => call<SavedDevice[]>('GET', '/watch/devices');
@@ -30,3 +30,10 @@ export const getYoutubePlaylistItems = (playlistId: string) =>
     'GET',
     `/watch/youtube/playlists/${encodeURIComponent(playlistId)}/items`
   ).then(r => r.items ?? []);
+
+export const searchYoutubeVideos = (query: string, pageToken?: string) => {
+  const params = new URLSearchParams({ q: query });
+  if (pageToken) params.set('pageToken', pageToken);
+
+  return call<YoutubeSearchPage>('GET', `/watch/youtube/search?${params}`);
+};
