@@ -13,8 +13,7 @@ const WINDOW_CLOSED = 'buzzedWindowClosed';
 const GRADED = 'buzzedGraded';
 const PLAYBACK_UPDATED = 'buzzedPlaybackUpdated';
 
-// Same reasoning as the web client: a missed Pusher event is silent, so realtime is the fast path and
-// these reconcile it. Without them one dropped socket leaves the app stale forever with no signal.
+// A missed Pusher event is silent, so realtime is the fast path and these reconcile it.
 const RECONCILE_MS = 10_000;
 
 interface GameState {
@@ -46,8 +45,7 @@ let channel: Channel | null = null;
 let reconcileTimer: ReturnType<typeof setInterval> | null = null;
 let advanceTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Refetch responses can land out of order — one issued before a ring-in can return after it and wipe the
-// queue. Stamp every request and drop any response a newer one has already superseded.
+// Refetches can land out of order: stamp each one and drop any response a newer one has superseded.
 let seq = 0;
 let applied = 0;
 
@@ -59,8 +57,8 @@ const getPusher = () => {
 };
 
 export const useGameStore = create<GameState>((set, get) => {
-  // Only the host's app drives the TV. Every other client — app or web — is a pure buzzer, so exactly
-  // one client ever sends a keypress. That matters because ECP `Play` is a toggle (see rokuControl).
+  // Only the host's app drives the TV, so exactly one client ever sends a keypress — ECP `Play` is a
+  // toggle (see rokuControl).
   const isHost = (game: BuzzedGame | null) =>
     !!game && !!firebaseAuth.currentUser && game.ownerUserId === firebaseAuth.currentUser.uid;
 
@@ -72,9 +70,8 @@ export const useGameStore = create<GameState>((set, get) => {
     advanceTimer = null;
   };
 
-  // Drive the TV to match the game, and close the answering window once it runs out. In a Roku game this
-  // app is the host's only screen, so the countdown the web host would run lives here instead. /advance is
-  // idempotent, so firing it late — or alongside another client — is harmless.
+  // In a Roku game this app is the host's only screen, so the window countdown lives here. /advance is
+  // idempotent, so firing it late or alongside another client is harmless.
   const syncTv = async (game: BuzzedGame) => {
     if (!isHost(game) || game.status !== 'active') return;
 
@@ -115,7 +112,7 @@ export const useGameStore = create<GameState>((set, get) => {
       applied = mine;
       apply(fresh);
     } catch {
-      // Swallow: a failed reconcile just means we try again on the next tick.
+      // A failed reconcile just retries on the next tick.
     }
   };
 
@@ -130,8 +127,7 @@ export const useGameStore = create<GameState>((set, get) => {
   const unsubscribe = () => {
     if (channel) {
       channel.unbind_all();
-      // Must go through the Pusher instance — `channel.unsubscribe()` leaves the subscription
-      // pending-but-uncancelled and the client silently deaf.
+      // `channel.unsubscribe()` leaves a pending subscription uncancelled and the client silently deaf.
       getPusher().unsubscribe(channel.name);
       channel = null;
     }
@@ -173,8 +169,7 @@ export const useGameStore = create<GameState>((set, get) => {
         return game;
       }),
 
-    // Hosting from the app always targets the TV — that's the whole reason this app exists. The active
-    // Roku is baked into the game at creation, so every client knows which TV it's on.
+    // The active Roku is baked into the game at creation, so every client knows which TV it's on.
     host: async input =>
       run(async () => {
         const ip = rokuIp(null);
@@ -206,7 +201,6 @@ export const useGameStore = create<GameState>((set, get) => {
       const question = game?.currentQuestion;
       if (!game || !question) return;
 
-      // Act on our own response, not the fan-out — we learn our place in the queue first.
       await run(async () => (await api.buzz(game.id, question.index)).game);
     },
 
@@ -222,9 +216,7 @@ export const useGameStore = create<GameState>((set, get) => {
       await run(() => api.advance(game.id));
     },
 
-    // Starting IS the cast. A separate "cast to TV" button was a way to get the two out of step — you
-    // could start a game with nothing on the screen, or cast without starting. The TV is thrown up first,
-    // so by the time the buzzers go live the intro is already playing.
+    // Starting is the cast: the TV goes up first, so the intro is playing before the buzzers go live.
     start: async () => {
       const game = get().game;
       if (!game) return;
@@ -237,8 +229,6 @@ export const useGameStore = create<GameState>((set, get) => {
 
       await run(async () => {
         if (game.target === 'roku' && ip && game.videoId) {
-          // A sleeping TV still answers ECP — it would accept the launch and play the intro to a black
-          // screen, with the buzzers already live. Wake it and wait for the panel before casting.
           const awake = await ensureRokuOn(ip);
           if (!awake) throw new Error('The TV didn’t wake up. Turn it on and try again.');
 

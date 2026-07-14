@@ -17,10 +17,8 @@ interface DeviceState {
   syncFromBackend: () => Promise<void>;
 }
 
-// Saved Rokos are cached in localStorage AND synced to the user's account (brainerd-api
-// `/watch/devices`) — the same list watch-remote uses, so a TV added in either app shows up in the other.
-// Which TV you're driving right now stays per-client. The device id is its IP. There's still no SSDP
-// discovery (that needs Apple's multicast entitlement on iOS), so a genuinely new Roku is added by hand.
+// Cached locally and synced to the account (`/watch/devices`) — the same list watch-remote uses. Which TV
+// you're driving stays per-client. No SSDP discovery (needs Apple's multicast entitlement), so adds are by hand.
 export const useDeviceStore = create<DeviceState>()(
   persist(
     (set, get) => ({
@@ -64,8 +62,7 @@ export const useDeviceStore = create<DeviceState>()(
           const merged = await apiGetDevices();
           const remoteIds = new Set(merged.map(d => d.id));
 
-          // Anything only this client knows about — added while offline, or before signing in — gets
-          // pushed up rather than dropped when the account list replaces the local one.
+          // Push up anything only this client knows about, rather than dropping it.
           for (const local of get().devices) {
             if (remoteIds.has(local.id)) continue;
             merged.push(local);
@@ -77,7 +74,7 @@ export const useDeviceStore = create<DeviceState>()(
 
           set({ devices: merged, activeId: stillThere ? activeId : (merged[0]?.id ?? null) });
         } catch {
-          // Offline or not signed in — keep the local cache rather than blanking the list.
+          // Offline or signed out — keep the local cache rather than blanking the list.
         }
       }
     }),

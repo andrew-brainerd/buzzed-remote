@@ -12,8 +12,7 @@ export const joinByCode = (code: string, color?: string) =>
 export const buzz = (gameId: string, questionIndex: number) =>
   call<BuzzResponse>('POST', `/buzzed/games/${gameId}/buzz`, { questionIndex });
 
-// Closes the answering window early and arms the next question. Idempotent server-side, so the host's
-// "resume now" and the client that notices the window elapsed can both fire it without racing.
+// Idempotent, so the host's "resume now" and the client that notices the window elapse can both fire it.
 export const advance = (gameId: string) =>
   call<BuzzedGame>('POST', `/buzzed/games/${gameId}/advance`, {});
 

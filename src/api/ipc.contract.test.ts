@@ -2,10 +2,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// The IPC boundary is invisible to both typecheckers: `tsc` doesn't know what Rust registers, and `cargo`
-// doesn't know what the frontend invokes. A renamed command compiles perfectly on both sides and then dies
-// at runtime with "Command <name> could not be found" — which is exactly how `watch_api` -> `brainerd_api`
-// slipped through. This test is the only thing standing between the two halves.
+// Neither typechecker sees the IPC boundary: a renamed command compiles on both sides and dies at runtime
+// with "Command <name> could not be found". This test is the only thing checking the two halves agree.
 
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap(entry => {

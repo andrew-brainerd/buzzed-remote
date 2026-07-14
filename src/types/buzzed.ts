@@ -26,7 +26,6 @@ export interface BuzzedPlayback {
   seekAt?: number;
 }
 
-// Position in this array IS the ring-in order.
 export interface BuzzedRingIn {
   userId: string;
   ringAt: number;
@@ -66,7 +65,6 @@ export interface BuzzedGame {
   currentQuestion: BuzzedQuestion | null;
   history: BuzzedQuestion[];
   createdAt: number;
-  // Presence means paused. A timestamp rather than a boolean so there's no "paused: false" third state.
   pausedAt?: number;
 }
 

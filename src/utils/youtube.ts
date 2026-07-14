@@ -1,9 +1,7 @@
 const YOUTUBE_ID = /^[\w-]{11}$/;
 const YOUTUBE_HOSTS = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com'];
 
-// Accepts anything a host might realistically paste on a phone: a watch link, a youtu.be share link, an
-// embed or shorts URL, a link with a timestamp or playlist hanging off it, or a bare 11-character id.
-// The Roku deep-launch takes the bare id, so a link that parses to null must never reach it.
+// The Roku deep-launch takes the bare id, so anything that doesn't parse must never reach it.
 export const parseYouTubeVideoId = (input: string): string | null => {
   const trimmed = input.trim();
   if (!trimmed) return null;
@@ -34,7 +32,6 @@ export const parseYouTubeVideoId = (input: string): string | null => {
   return null;
 };
 
-// The name a new game gets when the host doesn't bother typing one — which is most of the time.
-// en-CA gives YYYY-MM-DD, so it reads the same on every device regardless of locale.
+// en-CA gives YYYY-MM-DD, so it's locale-independent and sortable.
 export const defaultBuzzedGameName = (now: Date): string =>
   `Anime Quiz ${now.toLocaleDateString('en-CA')}`;

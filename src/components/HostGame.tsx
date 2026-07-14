@@ -192,7 +192,6 @@ export const HostGame = () => {
           </div>
         </div>
 
-        {/* The host is usually the one running the TV, not competing — so playing is opt-in. */}
         <label className="flex items-center gap-2 text-sm text-neutral-300">
           <input
             type="checkbox"

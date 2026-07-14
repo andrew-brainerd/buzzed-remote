@@ -9,7 +9,6 @@ const rungIn = (question: BuzzedQuestion | null | undefined, userId: string) =>
   !!question?.ringIns.some(r => r.userId === userId);
 
 // Mirrors the server's atomic buzz filter so the button is never lit when the server would reject it.
-// `answering` is buzzable: latecomers join the queue behind the first ringer, they just score less.
 const canBuzz = (game: BuzzedGame, userId: string, now: number) => {
   if (game.status !== 'active') return false;
   if (!game.players.some(p => p.userId === userId)) return false;
@@ -23,12 +22,7 @@ const canBuzz = (game: BuzzedGame, userId: string, now: number) => {
   return true;
 };
 
-// The ONE archived question you still owe a thumb on — never a stack of them. It sits alongside a live
-// buzzer, since the next question is already armed while you're marking the last one.
-//
-// The SERVER guarantees there's at most one: archiving a question auto-marks any older ungraded ring-in as
-// `missed`. Mapping over every ungraded question here is what put TWO identical "Did you get it right?"
-// cards on screen with no way to tell them apart.
+// The server guarantees at most one is ungraded, so prompts can't stack.
 const pendingGrade = (game: BuzzedGame, userId: string) =>
   game.history.filter(q => q.ringIns.some(r => r.userId === userId && !r.grade)).at(-1);
 

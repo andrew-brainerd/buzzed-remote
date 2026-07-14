@@ -31,14 +31,11 @@ export const App = () => {
   const [hosting, setHosting] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
 
-  // Pull the account's saved Rokos once we have a token to call with. The local cache renders first, so
-  // this only ever fills in TVs added on another client.
   useEffect(() => {
     if (user) void syncFromBackend();
   }, [user, syncFromBackend]);
 
-  // Creating the game drops you straight into it. Clear the flag now, or leaving that game later would
-  // land you back on the create form instead of the games list.
+  // Otherwise leaving the game later lands on the create form instead of the games list.
   useEffect(() => {
     if (game) setHosting(false);
   }, [game]);
@@ -53,11 +50,9 @@ export const App = () => {
 
   if (!user) return <Login />;
 
-  // Only a subview has anywhere to go back TO — the games list is the root.
   const canGoBack = !!game || hosting;
 
-  // Backing out of a game IS leaving it, so it asks first. Backing out of the create form isn't
-  // destructive, so it just closes.
+  // Backing out of a game is leaving it, so it asks first.
   const onBack = () => (game ? setConfirmLeave(true) : setHosting(false));
 
   return (

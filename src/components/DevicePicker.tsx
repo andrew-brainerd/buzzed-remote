@@ -2,10 +2,6 @@ import { useEffect, useState } from 'react';
 import { rokuDeviceInfo } from '@/api/ipc';
 import { useDeviceStore } from '@/stores/deviceStore';
 
-// Ported from watch-remote's DeviceBar: a dropdown of saved TVs plus a live reachability line, rather
-// than a list of tap targets. The status line earns its place here — hosting wakes the TV and casts to it,
-// so "is this thing actually reachable" is the question you want answered BEFORE you start a game, not
-// when the intro plays to a black screen.
 export const DevicePicker = () => {
   const { devices, activeId, addDevice, removeDevice, setActive, syncFromBackend } = useDeviceStore();
   const [name, setName] = useState('');
@@ -15,8 +11,7 @@ export const DevicePicker = () => {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
-  // Mirrors the store's activeDevice() fallback. Without it the dropdown reads blank while the app is
-  // quietly driving devices[0] — the UI would disagree with the TV it's actually casting to.
+  // Mirrors the store's activeDevice() fallback, or the dropdown reads blank while it drives devices[0].
   const active = devices.find(d => d.id === activeId) ?? devices[0];
   const activeIp = active?.ip;
 
@@ -26,8 +21,7 @@ export const DevicePicker = () => {
       return;
     }
 
-    // Cancelled on change so a slow probe for the TV you just switched away from can't overwrite the
-    // status of the one you switched to.
+    // Cancelled on change so a slow probe can't overwrite the status of the TV you switched to.
     let cancelled = false;
     setStatus('checking…');
 
@@ -50,8 +44,7 @@ export const DevicePicker = () => {
     setRefreshing(false);
   };
 
-  // Confirm the IP is actually a Roku before saving it, so a typo fails here rather than silently during a
-  // game when the cast doesn't fire. The typed name wins; otherwise the TV tells us its own.
+  // Confirm it's actually a Roku before saving, so a typo fails here rather than at cast time.
   const onAdd = async () => {
     const trimmedIp = ip.trim();
     if (!trimmedIp) return;

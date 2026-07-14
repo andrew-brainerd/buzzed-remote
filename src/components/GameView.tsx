@@ -46,8 +46,7 @@ const ExitIcon = () => (
 );
 
 interface GameViewProps {
-  // The confirmation lives in App, so the header's back button and this screen's exit icon — which are the
-  // same action — open one modal rather than each carrying a copy.
+  // Lives in App so the header's back button and this exit icon share one modal.
   onLeave: () => void;
 }
 
@@ -59,8 +58,6 @@ export const GameView = ({ onLeave }: GameViewProps) => {
 
   if (!game) return null;
 
-  // Dismissing the iOS share sheet rejects just like a real failure, so a 'failed' result says nothing
-  // rather than claiming something happened.
   const onShare = async () => {
     const result = await shareJoinLink(game.joinCode, game.name);
     if (result === 'failed') return;
@@ -96,14 +93,12 @@ export const GameView = ({ onLeave }: GameViewProps) => {
           >
             <ListIcon />
           </button>
-          {/* Leaving mid-game is one tap from the buzzer, so it asks first. */}
           <button type="button" onClick={onLeave} aria-label="Leave game" className={iconButton}>
             <ExitIcon />
           </button>
         </div>
       </div>
 
-      {/* Starting IS the cast — there's no separate "cast to TV" button to get out of step with it. */}
       {isHost && game.status === 'lobby' && (
         <button
           type="button"
@@ -115,7 +110,7 @@ export const GameView = ({ onLeave }: GameViewProps) => {
         </button>
       )}
 
-      {/* The window closes on its own; this just cuts it short once everyone has answered. */}
+      {/* The window closes on its own; this cuts it short. */}
       {isHost && active && !paused && answering && (
         <button
           type="button"

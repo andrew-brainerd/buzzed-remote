@@ -29,8 +29,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-// ECP `Play` is a play/pause TOGGLE, not a pause key. A blind second press un-pauses the video, so every
-// one of these guards a way a real game could break.
+// ECP `Play` is a TOGGLE, not a pause key — a blind second press un-pauses the video.
 describe('setRokuPlaying — idempotent toggle', () => {
   it('presses Play to pause a playing video', async () => {
     rokuMediaPlayer.mockResolvedValue(player('play'));
@@ -45,7 +44,6 @@ describe('setRokuPlaying — idempotent toggle', () => {
 
     await setRokuPlaying('1.2.3.4', false);
 
-    // A blind toggle here would resume the video the instant someone rang in.
     expect(rokuKeypress).not.toHaveBeenCalled();
   });
 
@@ -54,7 +52,6 @@ describe('setRokuPlaying — idempotent toggle', () => {
 
     await setRokuPlaying('1.2.3.4', true);
 
-    // A blind toggle here would pause the video on resume.
     expect(rokuKeypress).not.toHaveBeenCalled();
   });
 
@@ -97,8 +94,7 @@ describe('castVideo', () => {
   });
 });
 
-// A sleeping TV still answers ECP: it accepts the launch and plays the intro to a black screen while the
-// buzzers are already live. Every one of these guards a way that could happen for real.
+// A sleeping TV still answers ECP: it accepts the launch and plays the intro to a black screen.
 describe('ensureRokuOn', () => {
   it('costs a single request when the TV is already on — no wake, no wait', async () => {
     rokuDeviceInfo.mockResolvedValue(device(true));

@@ -4,8 +4,6 @@ interface LeaveConfirmProps {
   onLeave: () => void;
 }
 
-// Shared by the header's back button and the game screen's exit icon — on the game screen those are the
-// same action, so they must not each carry their own copy of this.
 export const LeaveConfirm = ({ joinCode, onStay, onLeave }: LeaveConfirmProps) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
     <div className="w-full max-w-xs rounded-lg border border-neutral-700 bg-neutral-900 p-5 text-center">
