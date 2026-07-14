@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { firebaseAuth } from '@/firebase';
 import { useAuthStore } from '@/stores/authStore';
 import { useDeviceStore } from '@/stores/deviceStore';
 import { useGameStore } from '@/stores/gameStore';
@@ -51,9 +52,19 @@ export const App = () => {
   if (!user) return <Login />;
 
   const canGoBack = !!game || hosting;
+  const isHost = !!game && game.ownerUserId === firebaseAuth.currentUser?.uid;
 
-  // Backing out of a game is leaving it, so it asks first.
-  const onBack = () => (game ? setConfirmLeave(true) : setHosting(false));
+  // The host owns the game — backing out just closes the view and it stays in their list, so there's
+  // nothing to confirm. For anyone else it's a real leave.
+  const onExitGame = () => {
+    if (isHost) {
+      void leave();
+      return;
+    }
+    setConfirmLeave(true);
+  };
+
+  const onBack = () => (game ? onExitGame() : setHosting(false));
 
   return (
     <div className="min-h-screen touch-manipulation overscroll-none bg-neutral-950 text-white">
@@ -82,7 +93,7 @@ export const App = () => {
       </header>
 
       {game ? (
-        <GameView onLeave={() => setConfirmLeave(true)} />
+        <GameView onLeave={onExitGame} />
       ) : hosting ? (
         <HostGame />
       ) : (
@@ -94,7 +105,7 @@ export const App = () => {
           title="Leave this game?"
           message={
             <>
-              You can rejoin with the code{' '}
+              It’ll drop off your games. You can rejoin with the code{' '}
               <span className="font-mono text-white">{game.joinCode}</span>.
             </>
           }
@@ -103,7 +114,7 @@ export const App = () => {
           onCancel={() => setConfirmLeave(false)}
           onConfirm={() => {
             setConfirmLeave(false);
-            leave();
+            void leave();
           }}
         />
       )}

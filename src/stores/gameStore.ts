@@ -23,7 +23,7 @@ interface GameState {
   join: (code: string) => Promise<void>;
   open: (gameId: string) => Promise<void>;
   host: (input: HostGameInput) => Promise<void>;
-  leave: () => void;
+  leave: () => Promise<void>;
   refetch: () => Promise<void>;
   buzz: () => Promise<void>;
   grade: (questionIndex: number, grade: BuzzedGrade) => Promise<void>;
@@ -190,7 +190,15 @@ export const useGameStore = create<GameState>((set, get) => {
         return game;
       }),
 
-    leave: () => {
+    // The host owns the game, so backing out just closes the view — it stays in their list. Anyone else
+    // is dropped from participantUserIds, which is what the games list is queried by.
+    leave: async () => {
+      const game = get().game;
+
+      if (game && !isHost(game)) {
+        await api.leaveGame(game.id).catch(() => undefined);
+      }
+
       unsubscribe();
       set({ game: null, error: null });
     },

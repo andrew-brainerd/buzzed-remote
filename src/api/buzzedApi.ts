@@ -31,6 +31,9 @@ export const createGame = (input: CreateBuzzedGameInput) =>
 export const startGame = (gameId: string) =>
   call<BuzzedGame>('POST', `/buzzed/games/${gameId}/start`, {});
 
+export const leaveGame = (gameId: string) =>
+  call<BuzzedGame>('DELETE', `/buzzed/games/${gameId}/participants/me`);
+
 export const completeGame = (gameId: string) =>
   call<BuzzedGame>('POST', `/buzzed/games/${gameId}/complete`, {});
 
