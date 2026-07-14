@@ -9,11 +9,7 @@ const ANSWER_WINDOW_CHOICES = [5_000, 10_000, 15_000, 20_000];
 
 type Source = 'playlist' | 'link';
 
-interface HostGameProps {
-  onCancel: () => void;
-}
-
-export const HostGame = ({ onCancel }: HostGameProps) => {
+export const HostGame = () => {
   const { host, busy, error } = useGameStore();
   const activeDevice = useDeviceStore(s => s.activeDevice());
 
@@ -76,12 +72,7 @@ export const HostGame = ({ onCancel }: HostGameProps) => {
 
   return (
     <div className="space-y-4 p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-white">Host a game</h2>
-        <button type="button" onClick={onCancel} className="text-xs text-neutral-400 hover:text-white">
-          Cancel
-        </button>
-      </div>
+      <h2 className="font-semibold text-white">Host a game</h2>
 
       <div className="space-y-3 rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
         <label className="block">

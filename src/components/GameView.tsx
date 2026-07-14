@@ -4,6 +4,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { useDeviceStore } from '@/stores/deviceStore';
 import { Buzzer } from '@/components/Buzzer';
 import { Scoreboard } from '@/components/Scoreboard';
+import { shareJoinLink } from '@/utils/share';
 
 const iconButton =
   'flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-800 hover:text-white';
@@ -44,13 +45,29 @@ const ExitIcon = () => (
   </svg>
 );
 
-export const GameView = () => {
-  const { game, busy, error, start, advance, pause, resume, leave } = useGameStore();
+interface GameViewProps {
+  // The confirmation lives in App, so the header's back button and this screen's exit icon — which are the
+  // same action — open one modal rather than each carrying a copy.
+  onLeave: () => void;
+}
+
+export const GameView = ({ onLeave }: GameViewProps) => {
+  const { game, busy, error, start, advance, pause, resume } = useGameStore();
   const activeDevice = useDeviceStore(s => s.activeDevice());
   const [showScores, setShowScores] = useState(false);
-  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [shared, setShared] = useState<string | null>(null);
 
   if (!game) return null;
+
+  // Dismissing the iOS share sheet rejects just like a real failure, so a 'failed' result says nothing
+  // rather than claiming something happened.
+  const onShare = async () => {
+    const result = await shareJoinLink(game.joinCode, game.name);
+    if (result === 'failed') return;
+
+    setShared(result === 'shared' ? 'Shared' : 'Link copied');
+    setTimeout(() => setShared(null), 1500);
+  };
 
   const isHost = game.ownerUserId === firebaseAuth.currentUser?.uid;
   const onRoster = game.players.some(p => p.userId === firebaseAuth.currentUser?.uid);
@@ -80,12 +97,7 @@ export const GameView = () => {
             <ListIcon />
           </button>
           {/* Leaving mid-game is one tap from the buzzer, so it asks first. */}
-          <button
-            type="button"
-            onClick={() => setConfirmLeave(true)}
-            aria-label="Leave game"
-            className={iconButton}
-          >
+          <button type="button" onClick={onLeave} aria-label="Leave game" className={iconButton}>
             <ExitIcon />
           </button>
         </div>
@@ -149,9 +161,20 @@ export const GameView = () => {
       )}
 
       {game.status === 'lobby' && (
-        <p className="py-8 text-center text-sm text-neutral-500">
-          Waiting to start · code <span className="font-mono text-white">{game.joinCode}</span>
-        </p>
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-900/60 px-4 py-6 text-center">
+          <p className="text-xs text-neutral-500">Share this to let people in</p>
+          <p className="font-mono text-3xl font-bold tracking-[0.3em] text-white">{game.joinCode}</p>
+
+          <button
+            type="button"
+            onClick={() => void onShare()}
+            className="rounded-lg border border-neutral-700 px-5 py-2.5 text-sm font-medium text-neutral-200 hover:bg-neutral-800"
+          >
+            {shared ?? 'Share join link'}
+          </button>
+
+          <p className="text-sm text-neutral-500">Waiting to start…</p>
+        </div>
       )}
 
       {isHost && active && !paused && (
@@ -183,36 +206,6 @@ export const GameView = () => {
         </div>
       )}
 
-      {confirmLeave && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
-          <div className="w-full max-w-xs rounded-lg border border-neutral-700 bg-neutral-900 p-5 text-center">
-            <p className="font-semibold text-white">Leave this game?</p>
-            <p className="mt-1 text-sm text-neutral-400">
-              You can rejoin with the code <span className="font-mono text-white">{game.joinCode}</span>.
-            </p>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmLeave(false)}
-                className="flex-1 rounded-lg border border-neutral-700 py-2.5 text-sm text-neutral-200"
-              >
-                Stay
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setConfirmLeave(false);
-                  leave();
-                }}
-                className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-semibold text-white"
-              >
-                Leave
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
