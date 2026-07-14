@@ -6,7 +6,7 @@ import { Login } from '@/components/Login';
 import { JoinGame } from '@/components/JoinGame';
 import { HostGame } from '@/components/HostGame';
 import { GameView } from '@/components/GameView';
-import { LeaveConfirm } from '@/components/LeaveConfirm';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 const BackIcon = () => (
   <svg
@@ -90,10 +90,18 @@ export const App = () => {
       )}
 
       {confirmLeave && game && (
-        <LeaveConfirm
-          joinCode={game.joinCode}
-          onStay={() => setConfirmLeave(false)}
-          onLeave={() => {
+        <ConfirmDialog
+          title="Leave this game?"
+          message={
+            <>
+              You can rejoin with the code{' '}
+              <span className="font-mono text-white">{game.joinCode}</span>.
+            </>
+          }
+          confirmLabel="Leave"
+          cancelLabel="Stay"
+          onCancel={() => setConfirmLeave(false)}
+          onConfirm={() => {
             setConfirmLeave(false);
             leave();
           }}

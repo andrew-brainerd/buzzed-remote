@@ -29,6 +29,7 @@ interface GameState {
   grade: (questionIndex: number, grade: BuzzedGrade) => Promise<void>;
   advance: () => Promise<void>;
   start: () => Promise<void>;
+  endGame: () => Promise<void>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
 }
@@ -236,6 +237,20 @@ export const useGameStore = create<GameState>((set, get) => {
         }
         return api.startGame(game.id);
       });
+    },
+
+    endGame: async () => {
+      const game = get().game;
+      if (!game) return;
+
+      await run(async () => {
+        await api.completeGame(game.id);
+      });
+
+      if (!get().error) {
+        unsubscribe();
+        set({ game: null });
+      }
     },
 
     pause: async () => {

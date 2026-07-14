@@ -5,6 +5,7 @@ import { useDeviceStore } from '@/stores/deviceStore';
 import { Buzzer } from '@/components/Buzzer';
 import { Scoreboard } from '@/components/Scoreboard';
 import { shareJoinLink } from '@/utils/share';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 const iconButton =
   'flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-800 hover:text-white';
@@ -51,10 +52,11 @@ interface GameViewProps {
 }
 
 export const GameView = ({ onLeave }: GameViewProps) => {
-  const { game, busy, error, start, advance, pause, resume } = useGameStore();
+  const { game, busy, error, start, advance, pause, resume, endGame } = useGameStore();
   const activeDevice = useDeviceStore(s => s.activeDevice());
   const [showScores, setShowScores] = useState(false);
   const [shared, setShared] = useState<string | null>(null);
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
   if (!game) return null;
 
@@ -169,6 +171,17 @@ export const GameView = ({ onLeave }: GameViewProps) => {
           </button>
 
           <p className="text-sm text-neutral-500">Waiting to start…</p>
+
+          {isHost && (
+            <button
+              type="button"
+              onClick={() => setConfirmEnd(true)}
+              disabled={busy}
+              className="text-xs text-neutral-500 underline hover:text-red-400 disabled:opacity-40"
+            >
+              End game
+            </button>
+          )}
         </div>
       )}
 
@@ -201,6 +214,19 @@ export const GameView = ({ onLeave }: GameViewProps) => {
         </div>
       )}
 
+      {confirmEnd && (
+        <ConfirmDialog
+          title="End this game?"
+          message="Nobody will be able to join or play it again."
+          confirmLabel="End game"
+          cancelLabel="Keep it"
+          onCancel={() => setConfirmEnd(false)}
+          onConfirm={() => {
+            setConfirmEnd(false);
+            void endGame();
+          }}
+        />
+      )}
     </div>
   );
 };
