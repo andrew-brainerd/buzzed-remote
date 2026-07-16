@@ -31,20 +31,32 @@ export const ensureRokuOn = async (ip: string, timeoutMs = WAKE_TIMEOUT_MS): Pro
 };
 
 // ECP has no pause key — `keypress/Play` is a TOGGLE, so firing it twice resumes the video. Never toggle
-// blind: read the real state first and only press when the device isn't already where we want it.
+// blind: read the real state first and only press when the device is settled and not where we want it.
 const PLAY = 'Play';
+const UP = 'Up';
 
-const isPlaying = (state: string) => state === 'play' || state === 'buffer' || state === 'startup';
+const PLAYING_STATES = new Set(['play', 'buffer', 'startup']);
 
 export const setRokuPlaying = async (ip: string, wantPlaying: boolean): Promise<boolean> => {
   const player = await rokuMediaPlayer(ip);
+  const playing = PLAYING_STATES.has(player.state);
 
-  // Nothing is up — a keypress here would do something unpredictable.
-  if (player.state === 'close') return false;
+  // Only a settled play/pause is safe to toggle. A freshly-cast video reports transient states
+  // (open, close, none) while it loads; a corrective press there races the load and pauses the intro
+  // we just started — which is what stopped "start game & cast" from ever playing anything.
+  if (!playing && player.state !== 'pause') return false;
 
-  if (isPlaying(player.state) === wantPlaying) return true;
+  if (playing === wantPlaying) return true;
 
   await rokuKeypress(ip, PLAY);
+
+  // Resuming pops the YouTube control bar up over the video; a couple of Ups dismiss it fast so it
+  // doesn't linger across the intro everyone's trying to name.
+  if (wantPlaying) {
+    await rokuKeypress(ip, UP);
+    await rokuKeypress(ip, UP);
+  }
+
   return true;
 };
 

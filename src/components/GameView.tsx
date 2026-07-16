@@ -3,6 +3,7 @@ import { firebaseAuth } from '@/firebase';
 import { useGameStore } from '@/stores/gameStore';
 import { useDeviceStore } from '@/stores/deviceStore';
 import { Buzzer } from '@/components/Buzzer';
+import { Results } from '@/components/Results';
 import { Scoreboard } from '@/components/Scoreboard';
 import { shareJoinLink } from '@/utils/share';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -59,6 +60,10 @@ export const GameView = ({ onLeave }: GameViewProps) => {
   const [confirmEnd, setConfirmEnd] = useState(false);
 
   if (!game) return null;
+
+  // When the game ends everyone lands here — their place, medals for the top 3, and a confetti burst
+  // if they made it. `onLeave` closes back to the games list without leaving the game.
+  if (game.status === 'completed') return <Results game={game} onDone={onLeave} />;
 
   const onShare = async () => {
     const result = await shareJoinLink(game.joinCode, game.name);

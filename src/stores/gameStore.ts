@@ -24,6 +24,7 @@ interface GameState {
   open: (gameId: string) => Promise<void>;
   host: (input: HostGameInput) => Promise<void>;
   leave: () => Promise<void>;
+  close: () => void;
   refetch: () => Promise<void>;
   buzz: () => Promise<void>;
   grade: (questionIndex: number, grade: BuzzedGrade) => Promise<void>;
@@ -251,14 +252,18 @@ export const useGameStore = create<GameState>((set, get) => {
       const game = get().game;
       if (!game) return;
 
-      await run(async () => {
-        await api.completeGame(game.id);
-      });
+      // Keep the completed game on screen — everyone lands on the results/standings. The video is done,
+      // so drop realtime; `run` applies the returned `completed` game, which GameView branches on.
+      await run(() => api.completeGame(game.id));
 
-      if (!get().error) {
-        unsubscribe();
-        set({ game: null });
-      }
+      if (!get().error) unsubscribe();
+    },
+
+    // The game's over — just leave the results view for the games list. No API call: a completed game
+    // shouldn't drop off anyone's history the way an active-game `leave` does.
+    close: () => {
+      unsubscribe();
+      set({ game: null, error: null });
     },
 
     pause: async () => {

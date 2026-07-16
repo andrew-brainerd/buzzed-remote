@@ -55,12 +55,34 @@ describe('setRokuPlaying — idempotent toggle', () => {
     expect(rokuKeypress).not.toHaveBeenCalled();
   });
 
-  it('presses Play to resume a paused video', async () => {
+  it('presses Play to resume a paused video, then hides the controls with two Ups', async () => {
     rokuMediaPlayer.mockResolvedValue(player('pause'));
 
     await setRokuPlaying('1.2.3.4', true);
 
+    expect(rokuKeypress).toHaveBeenNthCalledWith(1, '1.2.3.4', 'Play');
+    expect(rokuKeypress).toHaveBeenNthCalledWith(2, '1.2.3.4', 'Up');
+    expect(rokuKeypress).toHaveBeenNthCalledWith(3, '1.2.3.4', 'Up');
+  });
+
+  it('does not send the control-hiding Ups when pausing', async () => {
+    rokuMediaPlayer.mockResolvedValue(player('play'));
+
+    await setRokuPlaying('1.2.3.4', false);
+
+    expect(rokuKeypress).toHaveBeenCalledTimes(1);
     expect(rokuKeypress).toHaveBeenCalledWith('1.2.3.4', 'Play');
+  });
+
+  // The bug: a freshly-cast video briefly reports "open" while it loads. Treating that as "not playing"
+  // fired a corrective Play right as the video started — pausing the intro the moment the game began.
+  it('leaves a still-loading video ("open") alone instead of toggling it', async () => {
+    rokuMediaPlayer.mockResolvedValue(player('open'));
+
+    const ok = await setRokuPlaying('1.2.3.4', true);
+
+    expect(ok).toBe(false);
+    expect(rokuKeypress).not.toHaveBeenCalled();
   });
 
   it('treats buffering and startup as playing, not as paused', async () => {

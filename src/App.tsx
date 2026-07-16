@@ -28,6 +28,7 @@ export const App = () => {
   const { user, ready, signOut } = useAuthStore();
   const game = useGameStore(s => s.game);
   const leave = useGameStore(s => s.leave);
+  const closeGame = useGameStore(s => s.close);
   const syncFromBackend = useDeviceStore(s => s.syncFromBackend);
   const [hosting, setHosting] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -57,6 +58,11 @@ export const App = () => {
   // The host owns the game — backing out just closes the view and it stays in their list, so there's
   // nothing to confirm. For anyone else it's a real leave.
   const onExitGame = () => {
+    // A finished game is over for everyone — just go back to the list, don't drop it or prompt.
+    if (game?.status === 'completed') {
+      closeGame();
+      return;
+    }
     if (isHost) {
       void leave();
       return;
